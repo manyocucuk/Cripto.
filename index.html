@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MultiTrader</title>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+  --bg:#edf0f5;--panel:#ffffff;--line:#d5dbe5;--ink:#15202e;--mute:#667487;
+  --up:#08855f;--down:#d13a55;--acc:#5a3df0;--accsoft:rgba(90,61,240,.12);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0e1420;--panel:#161e2d;--line:#273246;--ink:#e6ebf3;--mute:#8696ad;
+    --up:#2fd39c;--down:#ff6b81;--acc:#9a86ff;--accsoft:rgba(154,134,255,.15);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e1420;--panel:#161e2d;--line:#273246;--ink:#e6ebf3;--mute:#8696ad;
+  --up:#2fd39c;--down:#ff6b81;--acc:#9a86ff;--accsoft:rgba(154,134,255,.15);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--ink);font-family:"Trebuchet MS","Segoe UI",Tahoma,sans-serif;
+  font-variant-numeric:tabular-nums;padding:14px;display:flex;justify-content:center}
+main{width:100%;max-width:460px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.mute{color:var(--mute);font-size:.8rem}
+.up{color:var(--up)}.down{color:var(--down)}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+header h1{font-size:2rem;letter-spacing:-.5px;line-height:1}
+.badge{display:inline-block;background:var(--accsoft);color:var(--acc);border-radius:20px;padding:3px 10px;font-size:.78rem;font-weight:700;margin-bottom:6px}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .4s}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.chip{flex:0 0 auto;min-width:92px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--ink);cursor:pointer;font:inherit}
+.chip b{display:block;font-size:.8rem}
+.chip span{font-size:.78rem}
+.chip.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.chip .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--acc);margin-left:4px}
+.price{font-size:2.1rem;font-weight:700;letter-spacing:-1px}
+svg{width:100%;height:90px;display:block;margin-top:8px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stats div{border-top:1px solid var(--line);padding-top:8px}
+.stats strong{display:block;font-size:1.05rem;margin-top:2px}
+label{display:block;margin-bottom:6px}
+input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:11px;font:inherit;font-size:1.05rem}
+input:focus-visible,button:focus-visible,.chip:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.col{display:flex;flex-direction:column;gap:8px}
+button.b{border:0;border-radius:8px;padding:13px;font:inherit;font-weight:700;cursor:pointer;color:#fff}
+button.b.s{padding:9px;font-size:.85rem;background:transparent;border:1px solid currentColor}
+.buy{background:var(--up)}.sell{background:var(--down)}
+.buy.s{color:var(--up)}.sell.s{color:var(--down)}
+button:disabled{opacity:.35;cursor:not-allowed}
+.rebirth{border-color:var(--acc)}
+.rebirth button{margin-top:10px;width:100%;background:var(--acc);color:#fff;border:0;border-radius:8px;padding:12px;font:inherit;font-weight:700;cursor:pointer}
+.reset{background:none;border:0;color:var(--mute);font:inherit;font-size:.8rem;text-decoration:underline;cursor:pointer;padding:6px}
+#msg{min-height:1.2em;font-size:.85rem;text-align:center;color:var(--mute)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <span class="badge" id="badge"></span>
+      <h1 id="net">$100</h1>
+      <div class="mute">Toplam varlık</div>
+    </div>
+    <div style="text-align:right">
+      <div class="mute">Nakit</div>
+      <strong id="cash" style="font-size:1.2rem">$100</strong>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="row"><span class="mute">Rebirth hedefi: $100.000</span><span class="mute" id="pct">%0</span></div>
+    <div class="bar"><i id="fill"></i></div>
+  </div>
+
+  <div class="chips" id="chips" role="tablist" aria-label="Coin seçimi"></div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <div class="mute" id="pair"></div>
+        <div class="price" id="price"></div>
+      </div>
+      <div style="text-align:right">
+        <div id="chg" style="font-weight:700"></div>
+        <div class="mute" id="range"></div>
+      </div>
+    </div>
+    <svg id="spark" viewBox="0 0 300 90" preserveAspectRatio="none" aria-label="Fiyat geçmişi"></svg>
+  </div>
+
+  <div class="card">
+    <div class="stats">
+      <div><span class="mute">Elindeki</span><strong id="hold"></strong></div>
+      <div><span class="mute">Ortalama maliyet</span><strong id="avg"></strong></div>
+      <div><span class="mute">Pozisyon değeri</span><strong id="val"></strong></div>
+      <div><span class="mute">Kâr / zarar</span><strong id="pl"></strong></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="mute" for="qty">Adet</label>
+    <input type="number" id="qty" value="1" min="1" step="1" inputmode="numeric">
+    <div class="grid">
+      <div class="col">
+        <button class="b buy" id="buy">Al</button>
+        <button class="b s buy" id="buyH">Nakdin yarısıyla al</button>
+        <button class="b s buy" id="buyM">Hepsini al</button>
+      </div>
+      <div class="col">
+        <button class="b sell" id="sell">Sat</button>
+        <button class="b s sell" id="sellH">Yarısını sat</button>
+        <button class="b s sell" id="sellM">Hepsini sat</button>
+      </div>
+    </div>
+    <p id="msg" role="status"></p>
+  </div>
+
+  <div class="card rebirth">
+    <strong>Rebirth</strong>
+    <p class="mute" style="margin-top:4px">Nakit ve coinler sıfırlanır, her satıştaki kârın +0,5x daha çok kazanılır.</p>
+    <button id="rb" disabled></button>
+  </div>
+
+  <button class="reset" id="reset">Oyunu sıfırla</button>
+</main>
+
+<script>
+const KEY = 'multitrader_v2';
+const TARGET = 100000;
+const COINS = [
+  ['Firarium','FIR',16000,15020,17050],
+  ['HW','HW',10800,9550,12050],
+  ['Cellium','CELL',5200,4600,5800],
+  ['Seyfi','SEYFI',3100,2500,3700],
+  ['Sakin','SAKIN',1750,1500,2000],
+  ['Hex','HEX',950,850,1050],
+  ['Bayhar','BAYHAR',600,500,700],
+  ['Ismo','ISMO',365,300,430],
+  ['N','N',230,200,260],
+  ['Kudoil','KUD',80,70,100]
+].map(c => ({name:c[0], sym:c[1], price:c[2], min:c[3], max:c[4], hold:0, cost:0, hist:Array(40).fill(c[2])}));
+
+let cash = 100, rebirth = 0, active = 9;
+const mult = () => 1 + rebirth * 0.5;
+
+try {
+  const s = JSON.parse(localStorage.getItem(KEY) || 'null');
+  if (s) {
+    cash = s.cash; rebirth = s.rebirth; active = s.active;
+    s.coins.forEach((sc, i) => { if (COINS[i]) Object.assign(COINS[i], sc); });
+  }
+} catch (e) {}
+
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({
+      cash, rebirth, active,
+      coins: COINS.map(c => ({price:c.price, hold:c.hold, cost:c.cost, hist:c.hist}))
+    }));
+  } catch (e) {}
+}
+
+const $ = id => document.getElementById(id);
+const usd = (n, d = 0) => '$' + n.toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
+const sgn = (n, d = 2) => (n >= 0 ? '+' : '−') + usd(Math.abs(n), d);
+const cur = () => COINS[active];
+
+function say(t, bad) {
+  const m = $('msg');
+  m.textContent = t;
+  m.style.color = bad ? 'var(--down)' : 'var(--mute)';
+}
+
+function tick() {
+  COINS.forEach(c => {
+    const mid = (c.min + c.max) / 2, span = c.max - c.min;
+    const pull = (mid - c.price) * 0.06;
+    const shock = (Math.random() - 0.5) * span * 0.45;
+    let p = Math.round(c.price + pull + shock);
+    c.price = Math.min(c.max, Math.max(c.min, p));
+    c.hist.push(c.price);
+    if (c.hist.length > 40) c.hist.shift();
+  });
+  save();
+  render();
+}
+
+function qtyVal() {
+  const q = Math.floor(Number($('qty').value));
+  return q >= 1 ? q : 0;
+}
+
+function buy(q) {
+  const c = cur();
+  if (q < 1) return say('Geçerli bir adet gir.', true);
+  const cost = q * c.price;
+  if (cost > cash) return say('Yetersiz nakit: ' + usd(cost) + ' gerekiyor.', true);
+  cash -= cost; c.hold += q; c.cost += cost;
+  say(q + ' ' + c.sym + ' alındı.');
+  save(); render();
+}
+
+function sell(q) {
+  const c = cur();
+  if (q < 1) return say('Geçerli bir adet gir.', true);
+  if (q > c.hold) return say('Elinde sadece ' + c.hold + ' ' + c.sym + ' var.', true);
+  const revenue = q * c.price;
+  const basis = c.cost * (q / c.hold);
+  const profit = revenue - basis;
+  const gain = profit > 0 ? profit * mult() : profit;
+  cash += basis + gain;
+  c.hold -= q; c.cost -= basis;
+  if (c.hold === 0) c.cost = 0;
+  say(q + ' ' + c.sym + ' satıldı: ' + sgn(gain) + (profit > 0 && mult() > 1 ? ' (' + mult().toFixed(1).replace('.', ',') + 'x çarpan)' : ''));
+  save(); render();
+}
+
+$('buy').onclick = () => buy(qtyVal());
+$('sell').onclick = () => sell(qtyVal());
+$('buyH').onclick = () => buy(Math.floor(cash / 2 / cur().price));
+$('buyM').onclick = () => buy(Math.floor(cash / cur().price));
+$('sellH').onclick = () => sell(Math.ceil(cur().hold / 2));
+$('sellM').onclick = () => sell(cur().hold);
+
+$('rb').onclick = () => {
+  if (!confirm('Rebirth yapmak istiyor musun? Nakit ve coinlerin sıfırlanır, çarpanın artar.')) return;
+  rebirth++; cash = 100;
+  COINS.forEach(c => { c.hold = 0; c.cost = 0; });
+  say('Rebirth #' + rebirth + ' tamam. Yeni çarpan: ' + mult().toFixed(1).replace('.', ',') + 'x');
+  save(); render();
+};
+
+$('reset').onclick = () => {
+  if (!confirm('Tüm ilerleme silinecek. Emin misin?')) return;
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  location.reload();
+};
+
+function buildChips() {
+  const box = $('chips');
+  box.innerHTML = '';
+  COINS.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (i === active ? ' on' : '');
+    b.setAttribute('role', 'tab');
+    const d = c.hist[c.hist.length - 1] - c.hist[c.hist.length - 2];
+    b.innerHTML = '<b>' + c.sym + (c.hold > 0 ? '<i class="dot"></i>' : '') + '</b><span class="' + (d >= 0 ? 'up' : 'down') + '">' + usd(c.price) + '</span>';
+    b.onclick = () => { active = i; save(); render(); };
+    box.appendChild(b);
+  });
+}
+
+function spark(c) {
+  const h = c.hist, lo = c.min, hi = c.max;
+  const pts = h.map((p, i) => (i / (h.length - 1) * 300).toFixed(1) + ',' + (84 - (p - lo) / (hi - lo) * 78).toFixed(1));
+  const up = h[h.length - 1] >= h[0];
+  const col = up ? 'var(--up)' : 'var(--down)';
+  let avg = '';
+  if (c.hold > 0) {
+    const y = 84 - (c.cost / c.hold - lo) / (hi - lo) * 78;
+    avg = '<line x1="0" x2="300" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="var(--acc)" stroke-width="1.2" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>';
+  }
+  $('spark').innerHTML = avg + '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>';
+}
+
+function render() {
+  const c = cur();
+  const worth = cash + COINS.reduce((s, x) => s + x.hold * x.price, 0);
+  $('net').textContent = usd(worth, 2);
+  $('cash').textContent = usd(cash, 2);
+  $('badge').textContent = 'Rebirth #' + rebirth + ' · ' + mult().toFixed(1).replace('.', ',') + 'x';
+  const p = Math.min(100, worth / TARGET * 100);
+  $('fill').style.width = p + '%';
+  $('pct').textContent = '%' + p.toFixed(1).replace('.', ',');
+
+  buildChips();
+  $('pair').textContent = c.name + ' (' + c.sym + ')';
+  $('price').textContent = usd(c.price);
+  $('range').textContent = usd(c.min) + ' – ' + usd(c.max);
+  const prev = c.hist[c.hist.length - 2] || c.price;
+  const d = (c.price - prev) / prev * 100;
+  $('chg').textContent = (d >= 0 ? '+' : '−') + Math.abs(d).toFixed(2).replace('.', ',') + '%';
+  $('chg').className = d >= 0 ? 'up' : 'down';
+  spark(c);
+
+  $('hold').textContent = c.hold.toLocaleString('en-US') + ' ' + c.sym;
+  $('avg').textContent = c.hold > 0 ? usd(c.cost / c.hold, 2) : '—';
+  $('val').textContent = usd(c.hold * c.price);
+  const pl = c.hold * c.price - c.cost;
+  $('pl').textContent = c.hold > 0 ? sgn(pl) : '—';
+  $('pl').className = c.hold > 0 ? (pl >= 0 ? 'up' : 'down') : '';
+
+  const canBuy = cash >= c.price, canSell = c.hold > 0;
+  $('buy').disabled = $('buyH').disabled = $('buyM').disabled = !canBuy;
+  $('sell').disabled = $('sellH').disabled = $('sellM').disabled = !canSell;
+
+  const ok = worth >= TARGET;
+  $('rb').disabled = !ok;
+  $('rb').textContent = ok ? 'Rebirth yap (+0,5x çarpan)' : 'Kilitli: ' + usd(TARGET) + ' gerekiyor';
+}
+
+render();
+setInterval(tick, 1500);
+</script>
+</body>
+</html>
